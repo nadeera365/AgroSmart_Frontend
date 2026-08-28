@@ -124,26 +124,49 @@ export default function Schedule() {
     setError('')
 
     try {
-      const parts = [
-        parseFloat(stage.urea_kg) > 0 &&
-          `Urea: ${stage.urea_kg}kg`,
+      const fertilizerParts = []
 
-        parseFloat(stage.tsp_kg) > 0 &&
-          `TSP: ${stage.tsp_kg}kg`,
+      if (Number(stage.urea_kg) > 0) {
+        fertilizerParts.push(
+          `Urea ${stage.urea_kg}kg`
+        )
+      }
 
-        parseFloat(stage.mop_kg) > 0 &&
-          `MOP: ${stage.mop_kg}kg`
-      ]
-        .filter(Boolean)
-        .join(', ')
+      if (Number(stage.tsp_kg) > 0) {
+        fertilizerParts.push(
+          `TSP ${stage.tsp_kg}kg`
+        )
+      }
 
-      const fertilizerText = parts
-        ? ` ${parts}.`
-        : ''
+      if (Number(stage.mop_kg) > 0) {
+        fertilizerParts.push(
+          `MOP ${stage.mop_kg}kg`
+        )
+      }
+
+      const shortDate = new Date(
+        stage.scheduled_date
+      )
+        .toISOString()
+        .slice(0, 10)
+
+      // Replace Unicode dash with normal ASCII dash
+      const safeStageName =
+        stage.stage_name.replace(
+          /[—–]/g,
+          '-'
+        )
 
       const message =
-        `AgroSmart: ${stage.stage_name} on ` +
-        `${stage.scheduled_date}.${fertilizerText}`
+        `AgroSmart: ${safeStageName}, ` +
+        `${shortDate}. ` +
+        `${fertilizerParts.join(', ')}.`
+
+      console.log('SMS message:', message)
+      console.log(
+        'SMS length:',
+        message.length
+      )
 
       await api.post('/sms/send', {
         phone: stage.farmer_phone,
@@ -160,7 +183,7 @@ export default function Schedule() {
 
       setError(
         err.response?.data?.message ||
-          'Failed to send SMS.'
+        'Failed to send SMS.'
       )
     } finally {
       setSending(null)
@@ -183,9 +206,9 @@ export default function Schedule() {
         current.map(item =>
           item.id === stage.id
             ? {
-                ...item,
-                status: 'applied'
-              }
+              ...item,
+              status: 'applied'
+            }
             : item
         )
       )
@@ -198,7 +221,7 @@ export default function Schedule() {
 
       setError(
         err.response?.data?.message ||
-          'Failed to update stage.'
+        'Failed to update stage.'
       )
     }
   }
@@ -206,8 +229,8 @@ export default function Schedule() {
   async function handleDelete(stage) {
     const confirmed = window.confirm(
       `Delete "${stage.stage_name}" for ` +
-        `${stage.farmer_name}? ` +
-        'This cannot be undone.'
+      `${stage.farmer_name}? ` +
+      'This cannot be undone.'
     )
 
     if (!confirmed) return
@@ -235,7 +258,7 @@ export default function Schedule() {
 
       setError(
         err.response?.data?.message ||
-          'Failed to delete stage.'
+        'Failed to delete stage.'
       )
     } finally {
       setDeleting(null)
@@ -500,11 +523,10 @@ export default function Schedule() {
               textTransform: 'capitalize',
               fontFamily: 'inherit',
 
-              border: `1.5px solid ${
-                filter === tab
+              border: `1.5px solid ${filter === tab
                   ? C.green
                   : C.border
-              }`,
+                }`,
 
               background:
                 filter === tab
@@ -727,7 +749,7 @@ export default function Schedule() {
 
                         borderBottom:
                           index <
-                          group.stages.length - 1
+                            group.stages.length - 1
                             ? `1px solid ${C.border}`
                             : 'none'
                       }}
@@ -742,13 +764,13 @@ export default function Schedule() {
 
                           background:
                             stage.status ===
-                            'applied'
+                              'applied'
                               ? C.successLt
                               : C.infoLt,
 
                           color:
                             stage.status ===
-                            'applied'
+                              'applied'
                               ? C.success
                               : C.info,
 
@@ -811,14 +833,14 @@ export default function Schedule() {
 
                           {stage.days_after !==
                             undefined && (
-                            <>
-                              <span>·</span>
+                              <>
+                                <span>·</span>
 
-                              <span>
-                                Day {stage.days_after}
-                              </span>
-                            </>
-                          )}
+                                <span>
+                                  Day {stage.days_after}
+                                </span>
+                              </>
+                            )}
                         </div>
 
                         {/* FERTILIZER VALUES */}
@@ -943,11 +965,10 @@ export default function Schedule() {
 
                             background: 'none',
 
-                            border: `1px solid ${
-                              deleting === stage.id
+                            border: `1px solid ${deleting === stage.id
                                 ? C.border
                                 : '#fecaca'
-                            }`,
+                              }`,
 
                             borderRadius: 6,
                             padding: '4px 12px',
