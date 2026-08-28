@@ -6,19 +6,19 @@ import { Card, SectionTitle, Sel, Btn, Alert, Spinner } from '../components/UI'
 import Timeline from '../components/Timeline'
 
 export default function NewCycle() {
-  const navigate  = useNavigate()
-  const location  = useLocation()
+  const navigate = useNavigate()
+  const location = useLocation()
 
-  const [farmers,       setFarmers]       = useState([])
-  const [form,          setForm]          = useState({
-    farmer_id:     location.state?.farmerId ? String(location.state.farmerId) : '',
+  const [farmers, setFarmers] = useState([])
+  const [form, setForm] = useState({
+    farmer_id: location.state?.farmerId ? String(location.state.farmerId) : '',
     planting_date: '',
   })
-  const [preview,  setPreview]  = useState([])
-  const [saving,   setSaving]   = useState(false)
-  const [loading,  setLoading]  = useState(true)
-  const [error,    setError]    = useState('')
-  const [success,  setSuccess]  = useState('')
+  const [preview, setPreview] = useState([])
+  const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [soilWarn, setSoilWarn] = useState('')
 
   useEffect(() => { loadFarmers() }, [])
@@ -42,65 +42,200 @@ export default function NewCycle() {
   }
 
   function generatePreview() {
-    const farmer = farmers.find(f => String(f.id) === String(form.farmer_id))
-    if (!farmer) return
+    const farmer = farmers.find(
+      f => String(f.id) === String(form.farmer_id)
+    )
 
-    const isIrrigated = farmer.cultivation_type === 'irrigated'
-    const acres = parseFloat(farmer.acres)
-
-    // Use real soil data from backend if available
-    const ureaPerAcre = isIrrigated
-      ? parseFloat(farmer.irrigated_urea_kg_acre || 56)
-      : parseFloat(farmer.rainfed_urea_kg_acre   || 56)
-    const tspPerAcre  = isIrrigated
-      ? parseFloat(farmer.irrigated_tsp_kg_acre  || 8)
-      : parseFloat(farmer.rainfed_tsp_kg_acre    || 8)
-    const mopPerAcre  = isIrrigated
-      ? parseFloat(farmer.irrigated_mop_kg_acre  || 16)
-      : parseFloat(farmer.rainfed_mop_kg_acre    || 16)
-
-    const isPatternB = ureaPerAcre >= 70
-    const ureaStages = isPatternB ? [0, 20, 30, 26, 14] : [0, 8, 22, 18, 8]
-    const tspStages  = [tspPerAcre, 0, 0, 0, 0]
-    const mopHalf    = Math.round(mopPerAcre / 2)
-    const mopStages  = [0, 0, mopHalf, mopPerAcre - mopHalf, 0]
-
-    const stageDefs = [
-      { index: 0, stage_name: 'Basal Application',    stage_icon: '🌱', daysAfter: 0  },
-      { index: 1, stage_name: 'Top Dress 1 — Week 3', stage_icon: '💧', daysAfter: 21 },
-      { index: 2, stage_name: 'Top Dress 2 — Week 5', stage_icon: '🌾', daysAfter: 35 },
-      { index: 3, stage_name: 'Top Dress 3 — Week 7', stage_icon: '⚡', daysAfter: 49 },
-      { index: 4, stage_name: 'Top Dress 4 — Week 8', stage_icon: '🌿', daysAfter: 56 },
-    ]
-
-    const addDays = (dateStr, days) => {
-      const d = new Date(dateStr)
-      d.setDate(d.getDate() + days)
-      return d.toISOString().split('T')[0]
+    if (!farmer) {
+      setPreview([])
+      return
     }
 
-    const stages = stageDefs.map((s, i) => {
-      const urea  = parseFloat((ureaStages[i] * acres).toFixed(2))
-      const tsp   = parseFloat((tspStages[i]  * acres).toFixed(2))
-      const mop   = parseFloat((mopStages[i]  * acres).toFixed(2))
-      return {
-        ...s,
-        scheduled_date: addDays(form.planting_date, s.daysAfter),
-        days_after:     s.daysAfter,
-        urea_kg:   urea,
-        tsp_kg:    tsp,
-        mop_kg:    mop,
-        total_kg:  parseFloat((urea + tsp + mop).toFixed(2)),
-        status:    'pending',
-        rescheduled: false,
+    const isIrrigated =
+      farmer.cultivation_type === 'irrigated'
+
+    const acres = Number(farmer.acres) || 0
+
+    // Use ?? because 0 is a valid recommendation
+    const totalUrea = Number(
+      isIrrigated
+        ? farmer.irrigated_urea_kg_acre ?? 0
+        : farmer.rainfed_urea_kg_acre ?? 0
+    )
+
+    const totalTSP = Number(
+      isIrrigated
+        ? farmer.irrigated_tsp_kg_acre ?? 0
+        : farmer.rainfed_tsp_kg_acre ?? 0
+    )
+
+    const totalMOP = Number(
+      isIrrigated
+        ? farmer.irrigated_mop_kg_acre ?? 0
+        : farmer.rainfed_mop_kg_acre ?? 0
+    )
+
+    if (
+      totalUrea === 0 &&
+      totalTSP === 0 &&
+      totalMOP === 0
+    ) {
+      setPreview([])
+
+      setSoilWarn(
+        'Soil nutrients are already sufficient in this area. No chemical fertilizer schedule is recommended.'
+      )
+
+      return
+    }
+
+    let ureaRatios
+
+    if (totalUrea >= 80) {
+      ureaRatios = [0, 20, 30, 26, 14]
+    } else if (totalTSP >= 14) {
+      ureaRatios = [0, 14, 22, 12, 8]
+    } else {
+      ureaRatios = [0, 8, 22, 18, 8]
+    }
+
+    const ureaRatioTotal = ureaRatios.reduce(
+      (sum, value) => sum + value,
+      0
+    )
+
+    const ureaStages = ureaRatios.map(
+      ratio =>
+        ureaRatioTotal > 0
+          ? (ratio / ureaRatioTotal) * totalUrea
+          : 0
+    )
+
+    const tspStages = [
+      totalTSP,
+      0,
+      0,
+      0,
+      0
+    ]
+
+    const mopFirstHalf = Number(
+      (totalMOP / 2).toFixed(2)
+    )
+
+    const mopSecondHalf = Number(
+      (totalMOP - mopFirstHalf).toFixed(2)
+    )
+
+    const mopStages = [
+      0,
+      0,
+      mopFirstHalf,
+      mopSecondHalf,
+      0
+    ]
+
+    const stageDefs = [
+      {
+        index: 0,
+        stage_name: 'Basal Application',
+        stage_icon: 'seedling',
+        daysAfter: 0
+      },
+      {
+        index: 1,
+        stage_name: 'Top Dress 1 — Week 3',
+        stage_icon: 'water',
+        daysAfter: 21
+      },
+      {
+        index: 2,
+        stage_name: 'Top Dress 2 — Week 5',
+        stage_icon: 'wheat',
+        daysAfter: 35
+      },
+      {
+        index: 3,
+        stage_name: 'Top Dress 3 — Week 7',
+        stage_icon: 'bolt',
+        daysAfter: 49
+      },
+      {
+        index: 4,
+        stage_name: 'Top Dress 4 — Week 8',
+        stage_icon: 'leaf',
+        daysAfter: 56
       }
-    }).filter(s => s.total_kg > 0)
+    ]
+
+    function addDays(dateString, days) {
+      const date = new Date(
+        `${dateString}T00:00:00.000Z`
+      )
+
+      date.setUTCDate(
+        date.getUTCDate() + days
+      )
+
+      return date.toISOString().slice(0, 10)
+    }
+
+    const stages = stageDefs
+      .map((stage, index) => {
+        const urea = Number(
+          (
+            ureaStages[index] * acres
+          ).toFixed(2)
+        )
+
+        const tsp = Number(
+          (
+            tspStages[index] * acres
+          ).toFixed(2)
+        )
+
+        const mop = Number(
+          (
+            mopStages[index] * acres
+          ).toFixed(2)
+        )
+
+        return {
+          ...stage,
+
+          scheduled_date: addDays(
+            form.planting_date,
+            stage.daysAfter
+          ),
+
+          days_after: stage.daysAfter,
+
+          urea_kg: urea,
+          tsp_kg: tsp,
+          mop_kg: mop,
+
+          total_kg: Number(
+            (urea + tsp + mop).toFixed(2)
+          ),
+
+          status: 'pending',
+          rescheduled: false
+        }
+      })
+      .filter(stage => stage.total_kg > 0)
 
     setPreview(stages)
 
-    // soil warning
-    if (ureaPerAcre === 0) setSoilWarn('Soil nutrients are already high in this area. Minimal chemical fertilizer recommended.')
-    else setSoilWarn('')
+    if (
+      farmer.phosphorus_status === 'High' ||
+      farmer.potassium_status === 'High'
+    ) {
+      setSoilWarn(
+        `High nutrient levels detected in ${farmer.gn_division}. Only the required fertilizers are included.`
+      )
+    } else {
+      setSoilWarn('')
+    }
   }
 
   async function handleSave() {
@@ -113,8 +248,8 @@ export default function NewCycle() {
     setSuccess('')
     try {
       const { data } = await api.post('/schedule', {
-        farmer_id:    parseInt(form.farmer_id),
-        planting_date: form.planting_date,
+        farmer_id: form.farmer_id,
+        planting_date: form.planting_date
       })
       setSuccess(`✅ Schedule created for ${data.farmer_name}! ${data.stages?.length || 0} stages planned.`)
       if (data.soil_warning) setSoilWarn(data.soil_warning)
@@ -135,7 +270,7 @@ export default function NewCycle() {
         <p style={{ fontSize: 13, color: C.muted }}>Select a farmer and planting date to generate a fertilizer schedule</p>
       </div>
 
-      {error   && <div style={{ marginBottom: 16 }}><Alert type="error">{error}</Alert></div>}
+      {error && <div style={{ marginBottom: 16 }}><Alert type="error">{error}</Alert></div>}
       {success && <div style={{ marginBottom: 16 }}><Alert type="success">{success}</Alert></div>}
       {soilWarn && <div style={{ marginBottom: 16 }}><Alert type="warning">{soilWarn}</Alert></div>}
 
@@ -180,11 +315,11 @@ export default function NewCycle() {
                 <div style={{ background: C.greenXlt, borderRadius: 9, padding: 14, border: `1px solid ${C.borderMd}` }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: C.green, marginBottom: 10 }}>Farmer Details</div>
                   {[
-                    ['GN Division',  selectedFarmer.gn_division],
-                    ['DS Area',      selectedFarmer.ds_area],
-                    ['Acres',        `${selectedFarmer.acres} acres`],
-                    ['Type',         selectedFarmer.cultivation_type],
-                    ['Soil pH',      selectedFarmer.soil_ph || '—'],
+                    ['GN Division', selectedFarmer.gn_division],
+                    ['DS Area', selectedFarmer.ds_area],
+                    ['Acres', `${selectedFarmer.acres} acres`],
+                    ['Type', selectedFarmer.cultivation_type],
+                    ['Soil pH', selectedFarmer.soil_ph || '—'],
                   ].map(([k, v]) => (
                     <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 5 }}>
                       <span style={{ color: C.muted }}>{k}</span>
@@ -204,7 +339,7 @@ export default function NewCycle() {
               </Btn>
 
               <p style={{ fontSize: 11, color: C.muted, textAlign: 'center' }}>
-                Schedule will check weather forecast and reschedule stages with high rain risk automatically.
+                Schedule is generated using the selected farmer’s GN soil data, cultivation type, acreage, and planting date.
               </p>
             </div>
           )}
