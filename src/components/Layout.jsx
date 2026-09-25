@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react'
-import { Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { C, globalCSS } from '../theme'
 import Dashboard from '../pages/Dashboard'
@@ -12,7 +11,7 @@ import SMSLog from '../pages/SMSLog'
 import {
   FaHome, FaUsers, FaPlusCircle,
   FaCalendarAlt, FaCloudSun, FaSms,
-  FaSignOutAlt, FaBars, FaTimes
+  FaSignOutAlt
 } from 'react-icons/fa'
 
 const NAV = [
@@ -29,19 +28,6 @@ const HEADER_H  = 56
 
 export default function Layout() {
   const { user, logout } = useAuth()
-  const location = useLocation()
-  const [mobileOpen, setMobileOpen] = useState(false)
-
-  // Close the drawer whenever the route changes (e.g. tapping a nav link)
-  useEffect(() => {
-    setMobileOpen(false)
-  }, [location.pathname])
-
-  // Lock body scroll while the mobile drawer is open
-  useEffect(() => {
-    document.body.style.overflow = mobileOpen ? 'hidden' : ''
-    return () => { document.body.style.overflow = '' }
-  }, [mobileOpen])
 
   return (
     <>
@@ -91,86 +77,12 @@ export default function Layout() {
           color: #dc2626;
           border-color: #fecaca;
         }
-
-        .hamburger-btn {
-          display: none;
-          align-items: center;
-          justify-content: center;
-          width: 36px;
-          height: 36px;
-          border-radius: 8px;
-          border: 1px solid ${C.border};
-          background: ${C.white};
-          color: ${C.text};
-          cursor: pointer;
-          flex-shrink: 0;
-        }
-        .hamburger-btn:hover {
-          background: ${C.greenXlt};
-          border-color: ${C.borderMd};
-        }
-
-        .sidebar-overlay {
-          display: none;
-        }
-
-        @media (max-width: 900px) {
-          .app-sidebar {
-            transform: translateX(-100%);
-            transition: transform 0.22s ease;
-          }
-          .app-sidebar.open {
-            transform: translateX(0);
-            box-shadow: 6px 0 20px rgba(0,0,0,0.18);
-          }
-          .app-main {
-            margin-left: 0 !important;
-          }
-          .hamburger-btn {
-            display: inline-flex;
-          }
-          .sidebar-overlay.show {
-            display: block;
-            position: fixed;
-            inset: 0;
-            background: rgba(10, 20, 10, 0.45);
-            z-index: 90;
-          }
-          .header-subtitle {
-            display: none;
-          }
-          .app-header {
-            padding-left: 16px !important;
-            padding-right: 16px !important;
-          }
-          .app-main-content {
-            padding: 18px !important;
-          }
-        }
-
-        @media (max-width: 480px) {
-          .status-badge-text {
-            display: none;
-          }
-          .status-badge {
-            padding: 6px !important;
-            width: 26px;
-            height: 26px;
-            justify-content: center;
-          }
-        }
       `}</style>
 
       <div style={{ display: 'flex', minHeight: '100vh', background: C.bg }}>
 
-        {/* Backdrop shown behind the drawer on mobile */}
-        <div
-          className={`sidebar-overlay${mobileOpen ? ' show' : ''}`}
-          onClick={() => setMobileOpen(false)}
-        />
-
         {/* SIDEBAR */}
-        <aside className={`app-sidebar${mobileOpen ? ' open' : ''}`} style={{
+        <aside style={{
           position: 'fixed',
           top: 0, left: 0, bottom: 0,
           width: SIDEBAR_W,
@@ -206,7 +118,7 @@ export default function Layout() {
             }}>
               AS
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div>
               <div style={{ fontWeight: 800, fontSize: 14, color: C.green, lineHeight: 1.2 }}>
                 AgroSmart
               </div>
@@ -214,14 +126,6 @@ export default function Layout() {
                 Sri Lanka
               </div>
             </div>
-            <button
-              className="hamburger-btn"
-              style={{ display: mobileOpen ? 'inline-flex' : undefined }}
-              onClick={() => setMobileOpen(false)}
-              aria-label="Close menu"
-            >
-              <FaTimes size={16} />
-            </button>
           </div>
 
           {/* Section label */}
@@ -294,7 +198,7 @@ export default function Layout() {
         </aside>
 
         {/* MAIN AREA */}
-        <div className="app-main" style={{
+        <div style={{
           marginLeft: SIDEBAR_W,
           flex: 1,
           display: 'flex',
@@ -303,7 +207,7 @@ export default function Layout() {
         }}>
 
           {/* Top header - same height as logo bar */}
-          <header className="app-header" style={{
+          <header style={{
             position: 'sticky',
             top: 0,
             zIndex: 50,
@@ -314,25 +218,15 @@ export default function Layout() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: 12,
             padding: '0 28px',
             flexShrink: 0,
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
-              <button
-                className="hamburger-btn"
-                onClick={() => setMobileOpen(true)}
-                aria-label="Open menu"
-              >
-                <FaBars size={16} />
-              </button>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: C.muted, minWidth: 0, overflow: 'hidden' }}>
-                <span style={{ whiteSpace: 'nowrap' }}>Ratnapura District</span>
-                <span className="header-subtitle" style={{ color: C.border, fontSize: 16, lineHeight: 1 }}>·</span>
-                <span className="header-subtitle" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Fertilizer Management System</span>
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: C.muted }}>
+              <span>Ratnapura District</span>
+              <span style={{ color: C.border, fontSize: 16, lineHeight: 1 }}>·</span>
+              <span>Fertilizer Management System</span>
             </div>
-            <div className="status-badge" style={{
+            <div style={{
               display: 'flex',
               alignItems: 'center',
               gap: 6,
@@ -343,21 +237,19 @@ export default function Layout() {
               fontSize: 12,
               color: C.success,
               fontWeight: 600,
-              flexShrink: 0,
             }}>
               <span style={{
                 width: 7, height: 7,
                 borderRadius: '50%',
                 background: C.success,
                 display: 'inline-block',
-                flexShrink: 0,
               }} />
-              <span className="status-badge-text">System Online</span>
+              System Online
             </div>
           </header>
 
           {/* Page content */}
-          <main className="app-main-content" style={{ flex: 1, padding: '28px', width: '100%', maxWidth: 1280 }}>
+          <main style={{ flex: 1, padding: '28px', width: '100%', maxWidth: 1280 }}>
             <Routes>
               <Route path="/dashboard"   element={<Dashboard />}    />
               <Route path="/farmers"     element={<Farmers />}      />
